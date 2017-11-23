@@ -110,7 +110,7 @@ mitvt_search_single_dim(rb_root_t *root,  itvt_val_t start, itvt_val_t end, nibb
 		}
 	}
 
-	printf("matched result:%lu \n", results);
+	//printf("matched result:%lu \n", results);
 
 	return results;
 }
@@ -138,12 +138,12 @@ int mitvt_search(mitvt_t *mitvt, struct packet *pkt)
 #endif
 
 		if (mitvt->matched[i].l == DIM_MAX) {
-			printf("Matched Rule Idx: %d\n", i);
+			//printf("Matched Rule Idx: %d\n", i);
 			break;
 		}
 
 		if (mitvt->matched[i].h == DIM_MAX) {
-			printf("Matched Rule Idx: %d\n", i+1);
+			//printf("Matched Rule Idx: %d\n", i+1);
 			break;
 		}
 	}

@@ -54,7 +54,7 @@
 #define PART_MAX (1 << 6)   /* 64 */
 
 
-//#define ENABLE_NIC 	1
+#define ENABLE_NIC 	1
 
 enum {
 	DIM_INV		= -1,

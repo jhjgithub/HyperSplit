@@ -24,6 +24,7 @@
 #include "impl.h"
 #include "utils.h"
 #include "hypersplit.h"
+#include "dbg.h"
 
 //////////////////////////////////////////////////
 
@@ -114,7 +115,7 @@ static void hs_terminate(struct hs_runtime *hsrt)
 	int64_t **shadow_pnts = hsrt->shadow_pnts;
 	struct shadow_range *shadow_rngs = hsrt->shadow_rngs;
 
-	printf("Ent: %s \n", __FUNCTION__);
+	dbg("Enter");
 	fflush(NULL);
 
 	while (!STAILQ_EMPTY(p_wqh)) {
@@ -145,13 +146,11 @@ static int hs_trigger(struct hs_runtime *hsrt)
 		{ 0, UINT32_MAX }, { 0, UINT32_MAX },
 		{ 0, UINT16_MAX }, { 0, UINT16_MAX },
 		{ 0, UINT8_MAX	}, 
-#ifdef ENABLE_NIC
-		{ 0, UINT8_MAX  }
-#endif
+		//{ 0, UINT8_MAX  }
+		{ 0, UINT32_MAX  }
 	};
 
-	printf("Ent: %s \n", __FUNCTION__);
-	fflush(NULL);
+	dbg("enter");
 
 	//assert(hsrt && hsrt->trees);
 	//assert(hsrt->part->subsets[hsrt->cur].rules);
@@ -212,8 +211,7 @@ static int hs_process(struct hs_runtime *hsrt)
 	struct hs_queue_head *p_wqh;
 	struct hs_queue_entry *ent;
 
-	printf("Ent: %s \n", __FUNCTION__);
-	fflush(NULL);
+	dbg("Enter");
 
 	/* The loop processes all internal nodes */
 	p_wqh = &hsrt->wqh;
@@ -224,7 +222,7 @@ static int hs_process(struct hs_runtime *hsrt)
 
 		ent = STAILQ_FIRST(p_wqh);
 		STAILQ_REMOVE_HEAD(p_wqh, e);
-
+		
 		/* choose split dimension */
 		split_dim = hs_dim_decision(hsrt, ent);
 		if (split_dim <= DIM_INV || split_dim >= DIM_MAX) {
@@ -242,7 +240,9 @@ static int hs_process(struct hs_runtime *hsrt)
 
 		/* process left child: require a new wqe */
 		split_rng = ent->space[split_dim];
-		orig_end = split_rng[1], split_rng[1] = split_pnt;
+		orig_end = split_rng[1];
+		split_rng[1] = split_pnt;
+
 		if (hs_spawn(hsrt, ent, split_dim, 0)) {
 			goto err;
 		}
@@ -271,8 +271,7 @@ static int hs_gather(struct hs_runtime *hsrt)
 
 	int node_cnt;
 
-	printf("Ent: %s \n", __FUNCTION__);
-	fflush(NULL);
+	dbg("enter");
 
 	p_node_pool = &hsrt->node_pool;
 	node_cnt = MPOOL_COUNT(p_node_pool);
@@ -312,7 +311,23 @@ static int hs_dim_decision(struct hs_runtime			*hsrt,
 	//	   ent, ent->rule_id, ent->rule_num);
 
 	//assert(ent && ent->rule_id && ent->rule_num > 1);
-	if (ent == NULL || ent->rule_id == NULL || ent->rule_num <= 1) {
+
+	if (ent == NULL) {
+		dbg("Wrong something: ent is NULL");
+		//exit(-1);
+		return DIM_INV;
+	}
+	else if (ent->rule_id == NULL) {
+		dbg("Wrong something: rule_id is NULL");
+		//exit(-1);
+		return DIM_INV;
+
+	}
+	else if (ent->rule_num <= 1) {
+		dbg("Wrong something: ent=%p, rule_num=%d", ent, ent->rule_num);
+		return DIM_INV;
+
+		exit(-1);
 		return 0;
 	}
 
@@ -347,16 +362,19 @@ static uint32_t hs_point_decision(const struct shadow_range *shadow_rng)
 {
 	int i, measure, measure_max, rng_num_max;
 
-	//assert(shadow_rng && shadow_rng->pnts && shadow_rng->cnts);
+	assert(shadow_rng && shadow_rng->pnts && shadow_rng->cnts);
 	if (shadow_rng == NULL || shadow_rng->pnts == NULL || shadow_rng->cnts == NULL) {
+		printf("Wrong !\n");
 		return 0;
 	}
 
 	measure = shadow_rng->cnts[0];
 	measure_max = shadow_rng->total >> 1; /* binary cut */
 	rng_num_max = (shadow_rng->point_num >> 1) - 1;
-	//assert(rng_num_max > 0);
+
+	assert(rng_num_max > 0);
 	if (rng_num_max <= 0) {
+		dbg("Wrong !");
 		return 0;
 	}
 

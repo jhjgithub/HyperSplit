@@ -26,6 +26,7 @@
 #include "rule_trace.h"
 #include "hypersplit.h"
 #include "rfg.h"
+#include "dbg.h"
 
 #define GRP_FILE "group_result.txt"
 
@@ -63,20 +64,20 @@ void test_mitvt(char *rule_file, char *trace_file);
 static void print_help(void)
 {
 	const char *s_help =
-		"NSLab Packet Classification Platform\n"
-		"\n"
-		"Valid options:\n"
-		"  -r, --rule FILE  specify a rule file for building\n"
-		"  -f, --format FORMAT  specify a rule file format: [wustl, wustl_g]\n"
-		"  -t, --trace FILE  specify a trace file for searching\n"
-		"\n"
-		"  -p, --pc ALGO  specify a pc algorithm: [hs]\n"
-		"  -g, --grp ALGO  specify a grp algorithm: [rfg]\n"
-		"\n"
-		"  -h, --help  display this help and exit\n"
-		"\n";
+		"NSLab Packet Classification Platform"
+		""
+		"Valid options:"
+		"  -r, --rule FILE  specify a rule file for building"
+		"  -f, --format FORMAT  specify a rule file format: [wustl, wustl_g]"
+		"  -t, --trace FILE  specify a trace file for searching"
+		""
+		"  -p, --pc ALGO  specify a pc algorithm: [hs]"
+		"  -g, --grp ALGO  specify a grp algorithm: [rfg]"
+		""
+		"  -h, --help  display this help and exit"
+		"";
 
-	printf("%s", s_help);
+	dbg("%s", s_help);
 
 	return;
 }
@@ -107,7 +108,7 @@ static void parse_args(struct platform_config *plat_cfg, int argc, char *argv[])
 		case 'r':
 		case 't':
 			if (access(optarg, F_OK) == -1) {
-				printf("%s\n", optarg);
+				dbg("ERROR: no file: %s", optarg);
 				exit(-1);
 			}
 
@@ -155,28 +156,28 @@ static void parse_args(struct platform_config *plat_cfg, int argc, char *argv[])
 	}
 
 	if (!plat_cfg->s_rule_file) {
-		printf("Not specify the rule file\n");
+		dbg("Not specify the rule file");
 		exit(-1);
 	}
 
 	if (plat_cfg->rule_fmt == RULE_FMT_INV) {
-		printf("Not specify the rule format\n");
+		dbg("Not specify the rule format");
 		exit(-1);
 	}
 
 	if (plat_cfg->pc_algo != PC_ALGO_INV &&
 		plat_cfg->grp_algo != GRP_ALGO_INV) {
-		printf("Cannot run in hybrid mode [pc & grp]\n");
+		dbg("Cannot run in hybrid mode [pc & grp]");
 		exit(-1);
 	}
 	else if (plat_cfg->pc_algo != PC_ALGO_INV) {
-		printf("Run in pc mode\n");
+		dbg("Run in pc mode");
 	}
 	else if (plat_cfg->grp_algo != GRP_ALGO_INV) {
-		printf("Run in grp mode\n");
+		dbg("Run in grp mode");
 	}
 	else {
-		printf("Not specify the pc or grp algorithm\n");
+		dbg("Not specify the pc or grp algorithm");
 		exit(-1);
 	}
 
@@ -305,7 +306,7 @@ void save_hypersplit(void *hs)
 	fd = open("hs.bin", O_WRONLY | O_TRUNC | O_CREAT, 0644);
 
 	if (fd == -1) {
-		printf("cannot open hs.bin \n");
+		dbg("cannot open hs.bin");
 		return;
 	}
 
@@ -317,9 +318,9 @@ void save_hypersplit(void *hs)
 	if (l == 0) {
 	}
 
-	printf("Saving Hypersplit \n");
-	printf("Num Tree: %d \n", hsret->tree_num);
-	printf("Def Rule: %d \n", hsret->def_rule);
+	dbg("Saving Hypersplit");
+	dbg("Num Tree: %d ", hsret->tree_num);
+	dbg("Def Rule: %d ", hsret->def_rule);
 
 	int j, tmem = 0, tnode = 0;
 
@@ -330,7 +331,7 @@ void save_hypersplit(void *hs)
 		tmem += mlen;
 		tnode += t->inode_num;
 
-		printf("#%d Tree: Node=%-5d, Mem=%-7d Bytes, Maxdepth=%d \n",
+		dbg("#%d Tree: Node=%-5d, Mem=%-7d Bytes, Maxdepth=%d ",
 				j + 1, t->inode_num, mlen, t->depth_max);
 
 		l = write(fd, &t->inode_num, sizeof(int));
@@ -341,7 +342,7 @@ void save_hypersplit(void *hs)
 
 	close(fd);
 
-	printf("Total: Node=%d, Mem=%d \n", tnode, tmem);
+	dbg("Total: Node=%d, Mem=%d ", tnode, tmem);
 }
 
 void* load_hypersplit(void)
@@ -362,16 +363,16 @@ void* load_hypersplit(void)
 	fd = open("hs.bin", O_RDONLY);
 
 	if (fd == -1) {
-		printf("cannot open hs.bin \n");
+		dbg("cannot open hs.bin ");
 		return NULL;
 	}
 
 	read(fd, &hs->tree_num, sizeof(int));
 	read(fd, &hs->def_rule, sizeof(int));
 
-	printf("Loading Hypersplit \n");
-	printf("Num Tree: %d \n", hs->tree_num);
-	printf("Def Rule: %d \n", hs->def_rule);
+	dbg("Loading Hypersplit ");
+	dbg("Num Tree: %d ", hs->tree_num);
+	dbg("Def Rule: %d ", hs->def_rule);
 
 	hs->trees = malloc(sizeof(struct hs_tree) * hs->tree_num);
 
@@ -391,20 +392,20 @@ void* load_hypersplit(void)
 		tmem += mlen;
 
 		if ((t->inode_num * sizeof(struct hs_node)) != mlen) {
-			printf("something wrong: mlen=%d \n", mlen);
+			dbg("something wrong: mlen=%d ", mlen);
 		}
 
 		t->root_node = malloc(mlen);
 
 		read(fd, (void *)t->root_node, mlen);
 
-		printf("#%d Tree: Node=%-5d, Mem=%-7d Bytes, Maxdepth=%d \n",
+		dbg("#%d Tree: Node=%-5d, Mem=%-7d Bytes, Maxdepth=%d ",
 				j + 1, t->inode_num, mlen, t->depth_max);
 	}
 
 	close(fd);
 
-	printf("Total: Node=%d, Mem=%d \n", tnode, tmem);
+	dbg("Total: Node=%d, Mem=%d ", tnode, tmem);
 
 	return hs;
 }
@@ -434,13 +435,14 @@ int main(int argc, char *argv[])
 	if (plat_cfg.rule_fmt == RULE_FMT_WUSTL) {
 		pa.subsets = calloc(1, sizeof(*pa.subsets));
 		if (!pa.subsets) {
-			printf("Cannot allocate memory for subsets");
 			exit(-1);
 		}
 
-		test_mitvt( plat_cfg.s_rule_file, plat_cfg.s_trace_file);
+		//test_mitvt( plat_cfg.s_rule_file, plat_cfg.s_trace_file);
 
 		if (load_rules(pa.subsets, plat_cfg.s_rule_file)) {
+			dbg("Cannot load rule file");
+			fflush(NULL);
 			exit(-1);
 		}
 
@@ -448,12 +450,12 @@ int main(int argc, char *argv[])
 		pa.rule_num = pa.subsets[0].rule_num;
 
 		// grouping
-		printf("Grouping ... \n");
+		dbg("Grouping ... ");
 		fflush(NULL);
 
 		if (pa.rule_num > 2) {
 			if (rf_group(&pa_grp, &pa)) {
-				printf("Error Grouping ... \n");
+				dbg("Error Grouping ... ");
 				exit(-1);
 			}
 
@@ -468,24 +470,24 @@ int main(int argc, char *argv[])
 			pa_grp.subsets = NULL;
 			unload_partition(&pa_grp);
 
-			printf("subset_num=%d, rule=%d \n", pa.subset_num, pa.rule_num);
-			printf("End Grouping ... \n");
+			dbg("subset_num=%d, rule=%d ", pa.subset_num, pa.rule_num);
+			dbg("End Grouping ... ");
 			fflush(NULL);
 		}
 
 #if 0
-		printf("Saving  ... \n");
+		dbg("Saving  ... ");
 		fflush(NULL);
 		dump_partition(GRP_FILE, &pa_grp);
 
-		printf("Loading ... \n");
+		dbg("Loading ... ");
 		fflush(NULL);
 
 		if (load_partition(&pa, GRP_FILE)) {
 			exit(-1);
 		}
 
-		printf("pa: subset_num=%d, rule=%d \n",
+		dbg("pa: subset_num=%d, rule=%d ",
 			   pa.subset_num, pa.rule_num);
 
 		fflush(NULL);
@@ -497,12 +499,12 @@ int main(int argc, char *argv[])
 		}
 
 		if (plat_cfg.grp_algo != GRP_ALGO_INV) {
-			printf("Reverting ... \n");
+			dbg("Reverting ... ");
 			fflush(NULL);
 
 			struct rule_set *p_rs = calloc(1, sizeof(*p_rs));
 			if (!p_rs) {
-				printf("Cannot allocate memory for subsets");
+				dbg("Cannot allocate memory for subsets");
 				exit(-1);
 			}
 
@@ -522,21 +524,21 @@ int main(int argc, char *argv[])
 	 * Grouping
 	 */
 	if (plat_cfg.grp_algo != GRP_ALGO_INV) {
-		printf("Grouping\n");
+		dbg("Grouping");
 
 		clock_gettime(CLOCK_MONOTONIC, &starttime);
 
 		assert(pa.subset_num == 1);
 
 		if (rf_group(&pa_grp, &pa)) {
-			printf("Grouping fail\n");
+			dbg("Grouping fail");
 			exit(-1);
 		}
 
 		clock_gettime(CLOCK_MONOTONIC, &stoptime);
 
-		printf("Grouping pass\n");
-		printf("Time for grouping: %" PRIu64 "(us)\n",
+		dbg("Grouping pass");
+		dbg("Time for grouping: %" PRIu64 "(us)",
 			   make_timediff(stoptime, starttime));
 
 		dump_partition(GRP_FILE, &pa_grp);
@@ -550,21 +552,21 @@ int main(int argc, char *argv[])
 	/*
 	 * Building
 	 */
-	printf("Building\n");
+	dbg("Building");
 	fflush(NULL);
 
 	clock_gettime(CLOCK_MONOTONIC, &starttime);
 
 	//call hs_build()
 	if (hs_build(&result, &pa)) {
-		printf("Building fail\n");
+		dbg("Building fail");
 		exit(-1);
 	}
 
 	clock_gettime(CLOCK_MONOTONIC, &stoptime);
 
-	printf("End Building\n");
-	printf("Time for building: %" PRIu64 "(us)\n",
+	dbg("End Building");
+	dbg("Time for building: %" PRIu64 "(us)",
 		   make_timediff(stoptime, starttime));
 	fflush(NULL);
 
@@ -581,12 +583,12 @@ int main(int argc, char *argv[])
 	/*
 	 * Searching
 	 */
-	printf("Searching\n");
+	dbg("Searching");
 
 	clock_gettime(CLOCK_MONOTONIC, &starttime);
 
 	if (hs_search(&t, &result)) {
-		printf("Searching fail\n");
+		dbg("Searching fail");
 		//exit(-1);
 	}
 
@@ -599,14 +601,14 @@ int main(int argc, char *argv[])
 	int i;
 	for (i = 0; i < t.pkt_num; i++) {
 		if (t.pkts[i].found != t.pkts[i].match_rule) {
-			printf("packet %d match %d, but should match %d\n",
+			dbg("packet %d match %d, but should match %d",
 				   i, t.pkts[i].found, t.pkts[i].match_rule);
 		}
 	}
 
-	printf("Searching pass\n");
-	printf("Time for searching: %" PRIu64 "(us)\n", timediff);
-	printf("Searching speed: %lld(pps)\n",
+	dbg("Searching pass");
+	dbg("Time for searching: %" PRIu64 "(us)", timediff);
+	dbg("Searching speed: %lld(pps)",
 		   (t.pkt_num * 1000000ULL) / timediff);
 
 
@@ -614,13 +616,13 @@ int main(int argc, char *argv[])
 	uint32_t tnode = 0;
 	size_t tmem;
 	tmem = hs_tree_memory_size(result, &tnode);
-	printf("Total:  Nodes=%u, Mem=%lu Bytes \n", tnode, tmem);
+	dbg("Total:  Nodes=%u, Mem=%lu Bytes ", tnode, tmem);
 
 	save_hypersplit(result);
 
 	void *new_hs = load_hypersplit();
 	if (hs_search(&t, &new_hs)) {
-		printf("Searching fail\n");
+		dbg("Searching fail");
 	}
 	hs_destroy(&new_hs);
 
@@ -642,9 +644,9 @@ void test_mitvt(char *rule_file, char *trace_file)
 	struct rule_set rset;
 	struct trace t;
 
-	printf("########################################\n");
+	dbg("########################################");
 
-	printf("rule:%s, trace:%s \n", rule_file, trace_file);
+	dbg("rule:%s, trace:%s ", rule_file, trace_file);
 
 	if (load_rules(&rset, rule_file)) {
 		exit(-1);
@@ -654,18 +656,18 @@ void test_mitvt(char *rule_file, char *trace_file)
 		exit(-1);
 	}
 
-	printf("Finish preparing data \n");
+	dbg("Finish preparing data ");
 	fflush(NULL);
 
 	test_insert_node(&rset);
 
 	clock_gettime(CLOCK_MONOTONIC, &starttime);
 
-	printf("Start searching \n");
+	dbg("Start searching ");
 	fflush(NULL);
 	test_search_trace(&t);
 
-	printf("Start searching \n");
+	dbg("Start searching ");
 	fflush(NULL);
 
 	clock_gettime(CLOCK_MONOTONIC, &stoptime);
@@ -674,8 +676,8 @@ void test_mitvt(char *rule_file, char *trace_file)
 		timediff = 1;
 	}
 
-	printf("Time for searching: %" PRIu64 "(us)\n", timediff);
-	printf("Searching speed: %lld(pps)\n", (t.pkt_num * 1000000ULL) / timediff);
-	printf("########################################\n");
+	dbg("Time for searching: %" PRIu64 "(us)", timediff);
+	dbg("Searching speed: %lld(pps)", (t.pkt_num * 1000000ULL) / timediff);
+	dbg("########################################");
 }
 

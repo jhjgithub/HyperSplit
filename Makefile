@@ -36,7 +36,7 @@ clean:
 	rm -rf $(OBJ_DIR);
 	rm -f tags
 
-tag:
+custom tag:
 	ctags -R
 
 run_grp:
@@ -49,10 +49,10 @@ run_pc:
 #	./bin/hs -p hs -f wustl -r rule_trace/rules/origin/fw1_10K -t rule_trace/traces/origin/fw1_10K_trace
 #	./bin/hs -p hs -f wustl -r rule_trace/rules/origin/fw2 -t rule_trace/traces/origin/fw2_trace
 #	gdb -ex=r --args ./bin/hs -p hs -f wustl -r rule_trace/rules/origin/fw2 -t rule_trace/traces/origin/fw2_trace
-#	./$(OBJ_DIR)/hs -p hs -f wustl -r rule_trace/rules/origin/fw2 -t rule_trace/traces/origin/fw2_trace
+#	./$(OBJ_DIR)/hs -p hs -f wustl -r conf/rules/origin/fw2 -t conf/traces/origin/fw2_trace
 
-#	./$(OBJ_DIR)/hs -p hs -f wustl -r fw2 -t fw2_trace
-	./$(OBJ_DIR)/hs -p hs -f wustl -r conf/rules/origin/fw1_10K -t conf/traces/origin/fw1_10K_trace
+	./$(OBJ_DIR)/hs -p hs -f wustl -r fw2 -t fw2_trace
+#	./$(OBJ_DIR)/hs -p hs -f wustl -r conf/rules/origin/fw1_10K -t conf/traces/origin/fw1_10K_trace
 
 format: $(SRC) $(HEADERS)
 	 uncrustify --no-backup --mtime -c ./formatter.cfg $^

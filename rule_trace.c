@@ -16,19 +16,20 @@
 #include "impl.h"
 #include "point_range.h"
 #include "rule_trace.h"
+#include "dbg.h"
 
 //#define MAKE_PROTO(p, n) (uint32_t)(((uint16_t)p) << 16 | (uint16_t)n)
 #define MAKE_PROTO(p, n) (uint32_t)(((uint8_t)p) << 8 | (uint8_t)n)
 
 void combind_proto_nic(struct rule *r, uint32_t *nic)
 {
-	//printf("proto range: 0x%x - 0x%x \n",r->dims[DIM_PROTO][0],r->dims[DIM_PROTO][0]);
-	//printf("nic range: 0x%x - 0x%x \n", nic[0], nic[1]);
+	//dbg("proto range: 0x%x - 0x%x ",r->dims[DIM_PROTO][0],r->dims[DIM_PROTO][0]);
+	//dbg("nic range: 0x%x - 0x%x ", nic[0], nic[1]);
 
 	r->dims[DIM_PROTO][0] = MAKE_PROTO(r->dims[DIM_PROTO][0], nic[0]);
 	r->dims[DIM_PROTO][1] = MAKE_PROTO(r->dims[DIM_PROTO][1], nic[1]);
 
-	printf("proto range: 0x%x - 0x%x \n", 
+	dbg("proto range: 0x%x - 0x%x ", 
 		   r->dims[DIM_PROTO][0], 
 		   r->dims[DIM_PROTO][1]);
 }
@@ -47,17 +48,17 @@ int load_rules(struct rule_set *p_rs, const char *s_rf)
 		return -EINVAL;
 	}
 
-	printf("Loading rules from %s\n", s_rf);
+	dbg("Loading rules from %s", s_rf);
 
 	fp_rule = fopen(s_rf, "r");
 	if (!fp_rule) {
-		printf("Cannot open file %s", s_rf);
+		dbg("Cannot open file %s", s_rf);
 		return -errno;
 	}
 
 	rules = calloc(RULE_MAX, sizeof(*rules));
 	if (!rules) {
-		printf("Cannot allocate memory for rules");
+		dbg("Cannot allocate memory for rules");
 		fclose(fp_rule);
 		return -ENOMEM;
 	}
@@ -68,7 +69,7 @@ int load_rules(struct rule_set *p_rs, const char *s_rf)
 	/* scan rule file */
 	while (!feof(fp_rule)) {
 		if (i >= RULE_MAX) {
-			printf("Too many rules\n");
+			dbg("Too many rules");
 			ret = -ENOTSUP;
 			goto err;
 		}
@@ -87,7 +88,7 @@ int load_rules(struct rule_set *p_rs, const char *s_rf)
 			break;
 		}
 
-		//printf("line=[%s]\n", line);
+		//dbg("line=[%s]", line);
 
 #define WUSTL_RULE_FMT_SCN1 \
 		"@%" SCNu32 ".%" SCNu32 ".%" SCNu32 ".%" SCNu32 "/%" SCNu32 \
@@ -96,7 +97,7 @@ int load_rules(struct rule_set *p_rs, const char *s_rf)
 		" %" SCNu32 " : %" SCNu32 \
 		" %" SCNx32 "/%" SCNx32 \
 		" %" SCNu32 " : %" SCNu32 \
-		"\n"
+		""
 
 		n = sscanf(line, WUSTL_RULE_FMT_SCN1,
 				   &src_ip_0, &src_ip_1, &src_ip_2, &src_ip_3, &src_ip_mask,
@@ -110,7 +111,7 @@ int load_rules(struct rule_set *p_rs, const char *s_rf)
 #else
 		if ( n != 16) {
 #endif
-			printf("Illegal rule format: read count=%d \n", n);
+			dbg("Illegal rule format: read count=%d ", n);
 			ret = -ENOTSUP;
 			goto err;
 		}
@@ -154,7 +155,7 @@ int load_rules(struct rule_set *p_rs, const char *s_rf)
 	p_rs->def_rule = i - 1;
 
 	fclose(fp_rule);
-	printf("%d rules loaded\n", i);
+	dbg("%d rules loaded", i);
 
 	return 0;
 
@@ -188,17 +189,17 @@ int load_trace(struct trace *p_t, const char *s_tf)
 		return -EINVAL;
 	}
 
-	printf("Loading trace from %s\n", s_tf);
+	dbg("Loading trace from %s", s_tf);
 
 	fp_trace = fopen(s_tf, "r");
 	if (!fp_trace) {
-		printf("Cannot open file %s", s_tf);
+		dbg("Cannot open file %s", s_tf);
 		return -errno;
 	}
 
 	pkts = calloc(PKT_MAX, sizeof(*pkts));
 	if (!pkts) {
-		printf("Cannot allocate memory for packets");
+		dbg("Cannot allocate memory for packets");
 		fclose(fp_trace);
 		return -ENOMEM;
 	}
@@ -206,14 +207,14 @@ int load_trace(struct trace *p_t, const char *s_tf)
     /* scan trace file */
 	while (!feof(fp_trace)) {
 		if (i >= PKT_MAX) {
-			printf("Too many packets\n");
+			dbg("Too many packets");
 			ret = -ENOTSUP;
 			goto err;
 		}
 
 #ifdef ENABLE_NIC
 #define WUSTL_PKT_FMT_SCN1 \
-	"%" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNd32 "\n"
+		"%" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNu32 " %" SCNd32 ""
 
 		n = fscanf(fp_trace, WUSTL_PKT_FMT_SCN1,
 				   &pkts[i].dims[DIM_SIP], &pkts[i].dims[DIM_DIP],
@@ -221,8 +222,11 @@ int load_trace(struct trace *p_t, const char *s_tf)
 				   &pkts[i].dims[DIM_PROTO], 
 				   &nic,
 				   &pkts[i].match_rule);
-		if (n != 7) {
-			printf("Illegal packet format: read count=%d \n", n);
+		if (n == -1) {
+			break;
+		}
+		else if (n != 7) {
+			dbg("Illegal packet format: read count=%d ", n);
 			ret = -ENOTSUP;
 			goto err;
 		}
@@ -233,15 +237,15 @@ int load_trace(struct trace *p_t, const char *s_tf)
 				   &pkts[i].dims[DIM_PROTO], 
 				   &pkts[i].match_rule);
 		if (n != 6) {
-			printf("Illegal packet format: read count=%d \n", n);
+			dbg("Illegal packet format: read count=%d ", n);
 			ret = -ENOTSUP;
 			goto err;
 		}
 #endif
 
-		//printf("org proto=0x%x \n", pkts[i].dims[DIM_PROTO]);
+		//dbg("org proto=0x%x ", pkts[i].dims[DIM_PROTO]);
 		//pkts[i].dims[DIM_PROTO] = MAKE_PROTO(pkts[i].dims[DIM_PROTO], nic);
-		//printf("current proto=0x%x \n", pkts[i].dims[DIM_PROTO]);
+		//dbg("current proto=0x%x ", pkts[i].dims[DIM_PROTO]);
 #ifdef ENABLE_NIC
 		pkts[i].dims[DIM_NIC] = nic;
 #endif
@@ -254,7 +258,7 @@ int load_trace(struct trace *p_t, const char *s_tf)
 	p_t->pkt_num = i;
 
 	fclose(fp_trace);
-	printf("%d packets loaded\n", i);
+	dbg("%d packets loaded", i);
 
 	return 0;
 
@@ -289,17 +293,17 @@ int load_partition(struct partition *p_pa, const char *s_pf)
 		return -EINVAL;
 	}
 
-	printf("Loading partition from %s\n", s_pf);
+	dbg("Loading partition from %s", s_pf);
 
 	fp_part = fopen(s_pf, "r");
 	if (!fp_part) {
-		printf("Cannot open file %s", s_pf);
+		dbg("Cannot open file %s", s_pf);
 		return -errno;
 	}
 
 	subsets = calloc(PART_MAX, sizeof(*subsets));
 	if (!subsets) {
-		printf("Cannot allocate memory for subsets");
+		dbg("Cannot allocate memory for subsets");
 		fclose(fp_part);
 		return -ENOMEM;
 	}
@@ -308,20 +312,20 @@ int load_partition(struct partition *p_pa, const char *s_pf)
 
 	while (!feof(fp_part)) {
 		if (p_pa->subset_num >= PART_MAX) {
-			printf("Too many partitions\n");
+			dbg("Too many partitions");
 			ret = -ENOTSUP;
 			goto err;
 		}
 
 		if (fscanf(fp_part, PART_HEAD_FMT_SCN, &part_idx, &rule_num) != 2) {
-			printf("Illegal partition header format\n");
+			dbg("Illegal partition header format");
 			ret = -ENOTSUP;
 			goto err;
 		}
 
 		rules = calloc(rule_num, sizeof(*rules));
 		if (!rules) {
-			printf("Cannot allocate memory for rules");
+			dbg("Cannot allocate memory for rules");
 			ret = -ENOMEM;
 			goto err;
 		}
@@ -334,7 +338,7 @@ int load_partition(struct partition *p_pa, const char *s_pf)
 					   &rules[i].dims[DIM_DPORT][0], &rules[i].dims[DIM_DPORT][1],
 					   &rules[i].dims[DIM_PROTO][0], &rules[i].dims[DIM_PROTO][1],
 					   &rules[i].pri) != 11) {
-				printf("Illegal partition rule format\n");
+				dbg("Illegal partition rule format");
 				free(rules);
 				ret = -ENOTSUP;
 				goto err;
@@ -353,7 +357,7 @@ int load_partition(struct partition *p_pa, const char *s_pf)
 	p_pa->rule_num -= p_pa->subset_num - 1;
 
 	fclose(fp_part);
-	printf("%d subsets and %d rules loaded\n",
+	dbg("%d subsets and %d rules loaded",
 			p_pa->subset_num, p_pa->rule_num);
 
 	return 0;
@@ -401,11 +405,11 @@ void dump_partition(const char *s_pf, const struct partition *p_pa)
 		return;
 	}
 
-	printf("Dumping partition to %s\n", s_pf);
+	dbg("Dumping partition to %s", s_pf);
 
 	fp_part = fopen(s_pf, "w+");
 	if (!fp_part) {
-		printf("Cannot open file %s", s_pf);
+		dbg("Cannot open file %s", s_pf);
 		fp_part = stdout;
 	}
 
@@ -447,7 +451,7 @@ int revert_partition(struct rule_set *p_rs, const struct partition *p_pa)
 
 	rules = calloc(p_pa->rule_num, sizeof(*rules));
 	if (!rules) {
-		printf("Cannot allocate memory for rules");
+		dbg("Cannot allocate memory for rules");
 		return -ENOMEM;
 	}
 
